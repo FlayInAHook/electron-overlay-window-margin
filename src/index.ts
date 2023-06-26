@@ -55,6 +55,7 @@ export interface AttachOptions {
     left?: number,
     right?: number
   }
+  selfHandleClickable?: boolean
 }
 
 const isMac = process.platform === 'darwin'
@@ -92,7 +93,8 @@ class OverlayControllerGlobal {
     this.events.on('attach', (e: AttachEvent) => {
       this.targetHasFocus = true
       if (this.electronWindow) {
-        this.electronWindow.setIgnoreMouseEvents(true)
+        if (!this.attachOptions.selfHandleClickable) this.electronWindow.setIgnoreMouseEvents(true)
+        
         this.electronWindow.showInactive()
         this.electronWindow.setAlwaysOnTop(true, 'screen-saver')
       }
@@ -134,7 +136,7 @@ class OverlayControllerGlobal {
       this.targetHasFocus = true
 
       if (this.electronWindow) {
-        this.electronWindow.setIgnoreMouseEvents(true)
+        if (!this.attachOptions.selfHandleClickable) this.electronWindow.setIgnoreMouseEvents(true)
         if (!this.electronWindow.isVisible()) {
           this.electronWindow.showInactive()
           this.electronWindow.setAlwaysOnTop(true, 'screen-saver')
@@ -180,12 +182,12 @@ class OverlayControllerGlobal {
     }
 
     if (marginPercent.left){
-      let reduce = Math.round(lastBounds.height / 100.0 * marginPercent.left);
+      let reduce = Math.round(lastBounds.width / 100.0 * marginPercent.left);
       newBounds = {x: newBounds.x + reduce, y: newBounds.y, width: newBounds.width - reduce, height: newBounds.height}
     }
 
     if (marginPercent.right){
-      let reduce = Math.round(lastBounds.height / 100.0 * marginPercent.right);
+      let reduce = Math.round(lastBounds.width / 100.0 * marginPercent.right);
       newBounds = {x: newBounds.x, y: newBounds.y, width: newBounds.width - reduce, height: newBounds.height}
     }
 
@@ -272,13 +274,13 @@ class OverlayControllerGlobal {
       throw new Error('You are using the library in tracking mode')
     }
     this.focusNext = 'overlay'
-    this.electronWindow.setIgnoreMouseEvents(false)
+    if (!this.attachOptions.selfHandleClickable) this.electronWindow.setIgnoreMouseEvents(false)
     this.electronWindow.focus()
   }
 
   focusTarget () {
     this.focusNext = 'target'
-    this.electronWindow?.setIgnoreMouseEvents(true)
+    if (!this.attachOptions.selfHandleClickable) this.electronWindow?.setIgnoreMouseEvents(true)
     lib.focusTarget()
   }
 
