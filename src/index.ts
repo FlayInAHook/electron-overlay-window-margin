@@ -49,6 +49,12 @@ export interface MoveresizeEvent {
 export interface AttachOptions {
   // Whether the Window has a title bar. We adjust the overlay to not cover it
   hasTitleBarOnMac?: boolean
+  marginPercent?: {
+    top?: number,
+    bottom?: number,
+    left?: number,
+    right?: number
+  }
 }
 
 const isMac = process.platform === 'darwin'
@@ -158,6 +164,34 @@ class OverlayControllerGlobal {
     }
   }
 
+  private updateToMarginBounds(lastBounds: Electron.Rectangle): Electron.Rectangle {
+    let newBounds: Electron.Rectangle = {x: lastBounds.x, y: lastBounds.y, width: lastBounds.width, height: lastBounds.height}
+    let marginPercent = this.attachOptions.marginPercent;
+    if (!marginPercent) return newBounds;
+
+    if (marginPercent.top){
+      let reduce = Math.round(lastBounds.height / 100.0 * marginPercent.top);
+      newBounds = {x: newBounds.x, y: newBounds.y + reduce, width: newBounds.width, height: newBounds.height - reduce}
+    }
+
+    if (marginPercent.bottom){
+      let reduce = Math.round(lastBounds.height / 100.0 * marginPercent.bottom);
+      newBounds = {x: newBounds.x, y: newBounds.y, width: newBounds.width, height: newBounds.height - reduce}
+    }
+
+    if (marginPercent.left){
+      let reduce = Math.round(lastBounds.height / 100.0 * marginPercent.left);
+      newBounds = {x: newBounds.x + reduce, y: newBounds.y, width: newBounds.width - reduce, height: newBounds.height}
+    }
+
+    if (marginPercent.right){
+      let reduce = Math.round(lastBounds.height / 100.0 * marginPercent.right);
+      newBounds = {x: newBounds.x, y: newBounds.y, width: newBounds.width - reduce, height: newBounds.height}
+    }
+
+    return newBounds;
+  } 
+
   private updateOverlayBounds () {
     let lastBounds = this.adjustBoundsForMacTitleBar(this.targetBounds)
     if (lastBounds.width === 0 || lastBounds.height === 0) return
@@ -166,13 +200,13 @@ class OverlayControllerGlobal {
     if (process.platform === 'win32') {
       lastBounds = screen.screenToDipRect(this.electronWindow, this.targetBounds)
     }
-    this.electronWindow.setBounds(lastBounds)
+    this.electronWindow.setBounds(this.updateToMarginBounds(lastBounds))
 
     // if moved to screen with different DPI, 2nd call to setBounds will correctly resize window
     // dipRect must be recalculated as well
     if (process.platform === 'win32') {
       lastBounds = screen.screenToDipRect(this.electronWindow, this.targetBounds)
-      this.electronWindow.setBounds(lastBounds)
+      this.electronWindow.setBounds(this.updateToMarginBounds(lastBounds))
     }
   }
 
