@@ -34,6 +34,10 @@ napi_value ow_event_to_js_object(napi_env env, struct ow_event* event) {
   status = napi_create_uint32(env, event->type, &e_type);
   NAPI_FATAL_IF_FAILED(status, "ow_event_to_js_object", "napi_create_uint32");
 
+  napi_value e_title;
+  status = napi_create_string_utf8(env, event->title, strlen(event->title), &e_title);
+  NAPI_FATAL_IF_FAILED(status, "ow_event_to_js_object", "napi_create_string_utf8");
+
   if (event->type == OW_ATTACH) {
     napi_value e_has_access;
     if (event->data.attach.has_access == -1) {
@@ -128,6 +132,7 @@ napi_value ow_event_to_js_object(napi_env env, struct ow_event* event) {
   else {
     napi_property_descriptor descriptors[] = {
       { "type", NULL, NULL, NULL, NULL, e_type, napi_enumerable, NULL },
+      { "title", NULL, NULL, NULL, NULL, e_title, napi_enumerable, NULL },
     };
     status = napi_define_properties(env, event_obj, sizeof(descriptors) / sizeof(descriptors[0]), descriptors);
     NAPI_FATAL_IF_FAILED(status, "ow_event_to_js_object", "napi_define_properties");

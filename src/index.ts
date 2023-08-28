@@ -213,6 +213,7 @@ class OverlayControllerGlobal {
   }
 
   private handler (e: unknown) {
+    console.log("window handler:", e);
     switch ((e as { type: EventType }).type) {
       case EventType.EVENT_ATTACH:
         this.events.emit('attach', e)

@@ -1,6 +1,7 @@
 #ifndef ADDON_SRC_OVERLAY_WINDOW_H_
 #define ADDON_SRC_OVERLAY_WINDOW_H_
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -50,6 +51,7 @@ struct ow_event_moveresize {
 
 struct ow_event {
   enum ow_event_type type;
+  char title[100];
   union {
     struct ow_event_attach attach;
     struct ow_event_fullscreen fullscreen;
