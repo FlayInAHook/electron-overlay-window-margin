@@ -438,12 +438,44 @@ static void cleanup_ui_automation() {
   CoUninitialize();
 }
 
+// Ensure target window has focus for UI Automation to work properly
+static void ensure_target_window_focus() {
+  if (target_info.hwnd == NULL) {
+    return;
+  }
+
+  // Check if window is already in foreground
+  HWND foregroundWindow = GetForegroundWindow();
+  if (foregroundWindow == target_info.hwnd) {
+    return; // Already has focus
+  }
+
+  // Bring window to foreground
+  SetForegroundWindow(target_info.hwnd);
+  
+  // Give the system a moment to process the focus change
+  Sleep(100);
+  
+  // Verify the window gained focus
+  foregroundWindow = GetForegroundWindow();
+  if (foregroundWindow != target_info.hwnd) {
+    // Try alternative methods if SetForegroundWindow failed
+    ShowWindow(target_info.hwnd, SW_RESTORE);
+    BringWindowToTop(target_info.hwnd);
+    SetActiveWindow(target_info.hwnd);
+    Sleep(50);
+  }
+}
+
 ow_edit_controls_result ow_find_edit_controls() {
   ow_edit_controls_result result = {0, 0};
   
   if (target_info.hwnd == NULL) {
     return result;
   }
+
+  // Ensure target window has focus for UI Automation to work properly
+  ensure_target_window_focus();
 
   HRESULT hr = init_ui_automation();
   if (FAILED(hr)) {
@@ -518,6 +550,9 @@ int ow_input_text_to_edit(int edit_index, const char* text) {
       g_pEditElements[edit_index] == NULL || text == NULL) {
     return 0; // Failed
   }
+
+  // Ensure target window has focus for input operations
+  ensure_target_window_focus();
 
   // Get the Value pattern to set text
   IUIAutomationValuePattern* pValuePattern = NULL;
@@ -597,6 +632,9 @@ ow_button_controls_result ow_find_button_controls() {
     return result;
   }
 
+  // Ensure target window has focus for UI Automation to work properly
+  ensure_target_window_focus();
+
   HRESULT hr = init_ui_automation();
   if (FAILED(hr)) {
     return result;
@@ -672,6 +710,9 @@ int ow_click_button(int button_index) {
     return 0; // Failed
   }
 
+  // Ensure target window has focus for click operations
+  ensure_target_window_focus();
+
   // Get the Invoke pattern to click the button
   IUIAutomationInvokePattern* pInvokePattern = NULL;
   HRESULT hr = g_pButtonElements[button_index]->lpVtbl->GetCurrentPatternAs(
@@ -696,6 +737,9 @@ ow_button_controls_result ow_find_buttons_with_images() {
   if (target_info.hwnd == NULL) {
     return result;
   }
+
+  // Ensure target window has focus for UI Automation to work properly
+  ensure_target_window_focus();
 
   HRESULT hr = init_ui_automation();
   if (FAILED(hr)) {
@@ -812,6 +856,9 @@ int ow_click_first_button_with_image() {
       return 0; // Failed
     }
   }
+
+  // Ensure target window has focus for click operations
+  ensure_target_window_focus();
 
   // Get the Invoke pattern to click the first button with image
   IUIAutomationInvokePattern* pInvokePattern = NULL;

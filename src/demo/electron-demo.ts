@@ -93,11 +93,11 @@ function makeDemoInteractive () {
   globalShortcut.register(toggleShowKey, () => {
     window.webContents.send('visibility-change', false)
   })
-
   // Demo UI Automation functionality (Windows only)
   globalShortcut.register(findEditKey, () => {
     if (process.platform === 'win32') {
       try {
+        console.log('Finding Edit controls (automatically focusing target window)...')
         const result = OverlayController.findEditControls()
         console.log('Edit controls found:', result)
         if (result.found) {
@@ -116,6 +116,7 @@ function makeDemoInteractive () {
   globalShortcut.register(inputTextKey, () => {
     if (process.platform === 'win32') {
       try {
+        console.log('Finding Edit controls and inputting text (auto-focus enabled)...')
         const result = OverlayController.findEditControls()
         if (result.found && result.count > 0) {
           const success = OverlayController.inputTextToEdit(0, 'Username_ElectronOverlay')

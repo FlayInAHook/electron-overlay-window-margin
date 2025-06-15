@@ -1,4 +1,5 @@
-{  "name": "electron-overlay-window",
+{
+  "name": "electron-overlay-window",
   "version": "3.4.0",
   "description": "Native library to create overlay windows for Electron with UI automation support",
   "author": {
@@ -8,7 +9,8 @@
     "type": "git",
     "url": "https://github.com/SnosMe/electron-overlay-window.git"
   },
-  "license": "MIT",  "keywords": [
+  "license": "MIT",
+  "keywords": [
     "window",
     "overlay",
     "electron",
@@ -21,7 +23,8 @@
     "click",
     "input",
     "controls"
-  ],"main": "dist/index.js",
+  ],
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
@@ -29,16 +32,19 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     }
-  },  "scripts": {
+  },
+  "scripts": {
     "install": "node-gyp-build",
     "prebuild": "prebuildify --napi",
     "build": "node-gyp rebuild && npm run build:types && npm run build:cjs && npm run build:esm",
     "build:types": "tsc --emitDeclarationOnly",
-    "build:cjs": "tsc",    "build:esm": "tsc -p tsconfig.esm.json && npm run rename-esm",
+    "build:cjs": "tsc",
+    "build:esm": "tsc -p tsconfig.esm.json && npm run rename-esm",
     "rename-esm": "node -e \"const fs = require('fs'); if (fs.existsSync('dist-esm/index.js')) { fs.renameSync('dist-esm/index.js', 'dist/index.mjs'); }\"",
     "prepublishOnly": "npm run build",
     "demo:electron": "node-gyp rebuild && npm run build && electron dist/demo/electron-demo.js"
-  },  "files": [
+  },
+  "files": [
     "dist/index.d.ts",
     "dist/index.js",
     "dist/index.mjs",
