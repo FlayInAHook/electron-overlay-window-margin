@@ -661,3 +661,17 @@ void ow_focus_target() {
   AXUIElementRef window = targetInfo.element;
   AXUIElementSetAttributeValue(window, kAXMainAttribute, kCFBooleanTrue);
 }
+
+// Stub implementations for UI Automation functions (only supported on Windows)
+ow_edit_controls_result ow_find_edit_controls() {
+  ow_edit_controls_result result = {0, 0};
+  return result;
+}
+
+int ow_input_text_to_edit(int edit_index, const char* text) {
+  return 0; // Not supported on Mac
+}
+
+int ow_get_text_from_edit(int edit_index, char* buffer, int buffer_size) {
+  return 0; // Not supported on Mac
+}

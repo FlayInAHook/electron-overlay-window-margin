@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#define _WIN32_DCOM
 #include <Windows.h>
 #include <oleacc.h>
+#include <UIAutomation.h>
 #include "overlay_window.h"
 
 #define OW_FOREGROUND_TIMER_MS 83 // 12 fps
@@ -39,6 +41,11 @@ static struct ow_target_window target_info = {
 static struct ow_overlay_window overlay_info = {
   .hwnd = NULL
 };
+
+// UI Automation globals
+static IUIAutomation* g_pAutomation = NULL;
+static IUIAutomationElement* g_pEditElements[2] = {NULL, NULL}; // Support for 2 edit controls
+static int g_editElementsCount = 0;
 
 static VOID CALLBACK hook_proc(HWINEVENTHOOK, DWORD, HWND, LONG, LONG, DWORD, DWORD);
 
@@ -377,4 +384,191 @@ void ow_screenshot(uint8_t* out, uint32_t width, uint32_t height) {
   DeleteDC(dcDest);
   ReleaseDC(target_info.hwnd, dcSrc);
   DeleteObject(bmp);
+}
+
+// Initialize UI Automation if not already done
+static HRESULT init_ui_automation() {
+  if (g_pAutomation != NULL) {
+    return S_OK; // Already initialized
+  }
+
+  HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = CoCreateInstance(&CLSID_CUIAutomation, NULL, CLSCTX_INPROC_SERVER, 
+                        &IID_IUIAutomation, (void**)&g_pAutomation);
+  
+  return hr;
+}
+
+// Clean up UI Automation resources
+static void cleanup_ui_automation() {
+  for (int i = 0; i < 2; i++) {
+    if (g_pEditElements[i] != NULL) {
+      g_pEditElements[i]->lpVtbl->Release(g_pEditElements[i]);
+      g_pEditElements[i] = NULL;
+    }
+  }
+  g_editElementsCount = 0;
+
+  if (g_pAutomation != NULL) {
+    g_pAutomation->lpVtbl->Release(g_pAutomation);
+    g_pAutomation = NULL;
+  }
+  
+  CoUninitialize();
+}
+
+ow_edit_controls_result ow_find_edit_controls() {
+  ow_edit_controls_result result = {0, 0};
+  
+  if (target_info.hwnd == NULL) {
+    return result;
+  }
+
+  HRESULT hr = init_ui_automation();
+  if (FAILED(hr)) {
+    return result;
+  }
+
+  // Clean up previous results
+  for (int i = 0; i < 2; i++) {
+    if (g_pEditElements[i] != NULL) {
+      g_pEditElements[i]->lpVtbl->Release(g_pEditElements[i]);
+      g_pEditElements[i] = NULL;
+    }
+  }
+  g_editElementsCount = 0;
+
+  // Get the window element
+  IUIAutomationElement* pWindowElement = NULL;
+  hr = g_pAutomation->lpVtbl->ElementFromHandle(g_pAutomation, target_info.hwnd, &pWindowElement);
+  if (FAILED(hr) || pWindowElement == NULL) {
+    return result;
+  }
+
+  // Create condition for Edit controls (ControlType 50004)
+  IUIAutomationCondition* pCondition = NULL;
+  VARIANT varControlType;
+  VariantInit(&varControlType);
+  varControlType.vt = VT_I4;
+  varControlType.lVal = 50004; // UIA_EditControlTypeId
+  
+  hr = g_pAutomation->lpVtbl->CreatePropertyCondition(g_pAutomation, 
+                                                      UIA_ControlTypePropertyId, 
+                                                      varControlType, 
+                                                      &pCondition);
+  VariantClear(&varControlType);
+
+  if (SUCCEEDED(hr) && pCondition != NULL) {
+    // Find all Edit controls
+    IUIAutomationElementArray* pFoundElements = NULL;
+    hr = pWindowElement->lpVtbl->FindAll(pWindowElement, TreeScope_Descendants, 
+                                         pCondition, &pFoundElements);
+    
+    if (SUCCEEDED(hr) && pFoundElements != NULL) {
+      int length = 0;
+      hr = pFoundElements->lpVtbl->get_Length(pFoundElements, &length);
+      
+      if (SUCCEEDED(hr)) {
+        result.found = 1;
+        result.count = length;
+        g_editElementsCount = (length > 2) ? 2 : length; // Store max 2 elements
+        
+        // Store the first 2 edit elements
+        for (int i = 0; i < g_editElementsCount; i++) {
+          hr = pFoundElements->lpVtbl->GetElement(pFoundElements, i, &g_pEditElements[i]);
+          if (FAILED(hr)) {
+            g_pEditElements[i] = NULL;
+          }
+        }
+      }
+      
+      pFoundElements->lpVtbl->Release(pFoundElements);
+    }
+    
+    pCondition->lpVtbl->Release(pCondition);
+  }
+  
+  pWindowElement->lpVtbl->Release(pWindowElement);
+  return result;
+}
+
+int ow_input_text_to_edit(int edit_index, const char* text) {
+  if (edit_index < 0 || edit_index >= g_editElementsCount || 
+      g_pEditElements[edit_index] == NULL || text == NULL) {
+    return 0; // Failed
+  }
+
+  // Get the Value pattern to set text
+  IUIAutomationValuePattern* pValuePattern = NULL;
+  HRESULT hr = g_pEditElements[edit_index]->lpVtbl->GetCurrentPatternAs(
+    g_pEditElements[edit_index], UIA_ValuePatternId, &IID_IUIAutomationValuePattern, 
+    (void**)&pValuePattern);
+
+  if (FAILED(hr) || pValuePattern == NULL) {
+    return 0; // Failed
+  }
+
+  // Convert text to wide string
+  int wide_len = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
+  if (wide_len == 0) {
+    pValuePattern->lpVtbl->Release(pValuePattern);
+    return 0;
+  }
+
+  WCHAR* wide_text = malloc(wide_len * sizeof(WCHAR));
+  if (wide_text == NULL) {
+    pValuePattern->lpVtbl->Release(pValuePattern);
+    return 0;
+  }
+
+  MultiByteToWideChar(CP_UTF8, 0, text, -1, wide_text, wide_len);
+
+  // Set the text using SysAllocString
+  BSTR bstr_text = SysAllocString(wide_text);
+  hr = pValuePattern->lpVtbl->SetValue(pValuePattern, bstr_text);
+  
+  SysFreeString(bstr_text);
+  free(wide_text);
+  pValuePattern->lpVtbl->Release(pValuePattern);
+  
+  return SUCCEEDED(hr) ? 1 : 0;
+}
+
+int ow_get_text_from_edit(int edit_index, char* buffer, int buffer_size) {
+  if (edit_index < 0 || edit_index >= g_editElementsCount || 
+      g_pEditElements[edit_index] == NULL || buffer == NULL || buffer_size <= 0) {
+    return 0; // Failed
+  }
+
+  // Get the Value pattern to read text
+  IUIAutomationValuePattern* pValuePattern = NULL;
+  HRESULT hr = g_pEditElements[edit_index]->lpVtbl->GetCurrentPatternAs(
+    g_pEditElements[edit_index], UIA_ValuePatternId, &IID_IUIAutomationValuePattern, 
+    (void**)&pValuePattern);
+
+  if (FAILED(hr) || pValuePattern == NULL) {
+    return 0; // Failed
+  }
+
+  BSTR bstr_value = NULL;
+  hr = pValuePattern->lpVtbl->get_CurrentValue(pValuePattern, &bstr_value);
+  
+  if (SUCCEEDED(hr) && bstr_value != NULL) {
+    // Convert from wide string to UTF-8
+    int utf8_len = WideCharToMultiByte(CP_UTF8, 0, bstr_value, -1, NULL, 0, NULL, NULL);
+    if (utf8_len > 0 && utf8_len <= buffer_size) {
+      WideCharToMultiByte(CP_UTF8, 0, bstr_value, -1, buffer, buffer_size, NULL, NULL);
+      SysFreeString(bstr_value);
+      pValuePattern->lpVtbl->Release(pValuePattern);
+      return 1; // Success
+    }
+    SysFreeString(bstr_value);
+  }
+  
+  pValuePattern->lpVtbl->Release(pValuePattern);
+  return 0; // Failed
 }

@@ -1,8 +1,7 @@
+import { BrowserWindow, BrowserWindowConstructorOptions, Rectangle, screen } from 'electron'
 import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import { throttle } from 'throttle-debounce'
-import { screen } from 'electron'
-import { BrowserWindow, Rectangle, BrowserWindowConstructorOptions } from 'electron'
 const lib: AddonExports = require('node-gyp-build')(join(__dirname, '..'))
 
 interface AddonExports {
@@ -15,6 +14,14 @@ interface AddonExports {
   activateOverlay(): void
   focusTarget(): void
   screenshot(): Buffer
+  findEditControls(): EditControlsResult
+  inputTextToEdit(editIndex: number, text: string): boolean
+  getTextFromEdit(editIndex: number): string | null
+}
+
+export interface EditControlsResult {
+  found: boolean
+  count: number
 }
 
 enum EventType {
@@ -312,13 +319,36 @@ class OverlayControllerGlobal {
       targetWindowTitle,
       this.handler.bind(this))
   }
-
   // buffer suitable for use in `nativeImage.createFromBitmap`
   screenshot (): Buffer {
     if (process.platform !== 'win32') {
       throw new Error('Not implemented on your platform.')
     }
     return lib.screenshot()
+  }
+
+  // Find Edit controls (ControlType 50004) in the target window
+  findEditControls (): EditControlsResult {
+    if (process.platform !== 'win32') {
+      throw new Error('UI Automation is only supported on Windows.')
+    }
+    return lib.findEditControls()
+  }
+
+  // Input text into a specific Edit control by index (0-based)
+  inputTextToEdit (editIndex: number, text: string): boolean {
+    if (process.platform !== 'win32') {
+      throw new Error('UI Automation is only supported on Windows.')
+    }
+    return lib.inputTextToEdit(editIndex, text)
+  }
+
+  // Get text from a specific Edit control by index (0-based)
+  getTextFromEdit (editIndex: number): string | null {
+    if (process.platform !== 'win32') {
+      throw new Error('UI Automation is only supported on Windows.')
+    }
+    return lib.getTextFromEdit(editIndex)
   }
 }
 

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, globalShortcut } from 'electron'
-import { OverlayController, OVERLAY_WINDOW_OPTS } from '../'
+import { OVERLAY_WINDOW_OPTS, OverlayController } from '../'
 
 // https://github.com/electron/electron/issues/25153
 app.disableHardwareAcceleration()
@@ -8,6 +8,8 @@ let window: BrowserWindow
 
 const toggleMouseKey = 'CmdOrCtrl + J'
 const toggleShowKey = 'CmdOrCtrl + K'
+const findEditKey = 'CmdOrCtrl + L'
+const inputTextKey = 'CmdOrCtrl + M'
 
 function createWindow () {
   window = new BrowserWindow({
@@ -29,9 +31,10 @@ function createWindow () {
       <div style="padding-top: 50vh; text-align: center;">
         <div style="padding: 16px; border-radius: 8px; background: rgb(255,255,255); border: 4px solid red; display: inline-block;">
           <span>Overlay Window</span>
-          <span id="text1"></span>
-          <br><span><b>${toggleMouseKey}</b> to toggle setIgnoreMouseEvents</span>
+          <span id="text1"></span>          <br><span><b>${toggleMouseKey}</b> to toggle setIgnoreMouseEvents</span>
           <br><span><b>${toggleShowKey}</b> to "hide" overlay using CSS</span>
+          <br><span><b>${findEditKey}</b> to find Edit controls (Windows only)</span>
+          <br><span><b>${inputTextKey}</b> to input text to first Edit control (Windows only)</span>
         </div>
       </div>
       <script>
@@ -59,7 +62,7 @@ function createWindow () {
 
   OverlayController.attachByTitle(
     window,
-    process.platform === 'darwin' ? 'Untitled' : 'Notepad',
+    process.platform === 'darwin' ? 'Untitled' : 'Riot Client',
     { hasTitleBarOnMac: true }
   )
 }
@@ -85,9 +88,50 @@ function makeDemoInteractive () {
   })
 
   globalShortcut.register(toggleMouseKey, toggleOverlayState)
-
   globalShortcut.register(toggleShowKey, () => {
     window.webContents.send('visibility-change', false)
+  })
+
+  // Demo UI Automation functionality (Windows only)
+  globalShortcut.register(findEditKey, () => {
+    if (process.platform === 'win32') {
+      try {
+        const result = OverlayController.findEditControls()
+        console.log('Edit controls found:', result)
+        if (result.found) {
+          console.log(`Found ${result.count} Edit control(s)`)
+        } else {
+          console.log('No Edit controls found in the target window')
+        }
+      } catch (error) {
+        console.error('Error finding Edit controls:', error)
+      }
+    } else {
+      console.log('UI Automation is only supported on Windows')
+    }
+  })
+
+  globalShortcut.register(inputTextKey, () => {
+    if (process.platform === 'win32') {
+      try {
+        const result = OverlayController.findEditControls()
+        if (result.found && result.count > 0) {
+          const success = OverlayController.inputTextToEdit(0, 'Username_ElectronOverlay')
+          const success2 = OverlayController.inputTextToEdit(1, 'Password_ElectronOverlay')
+          if (success && success2) {
+            console.log('Successfully inputted text to both Edit controls')
+          } else {
+            console.log('Failed to input text to one or both Edit controls')
+          }
+        } else {
+          console.log('No Edit controls found. Press Ctrl+L first to find Edit controls.')
+        }
+      } catch (error) {
+        console.error('Error inputting text to Edit control:', error)
+      }
+    } else {
+      console.log('UI Automation is only supported on Windows')
+    }
   })
 }
 

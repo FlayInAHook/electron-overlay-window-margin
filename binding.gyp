@@ -9,14 +9,15 @@
       'include_dirs': [
         'src/lib'
       ],
-      'conditions': [
-        ['OS=="win"', {
+      'conditions': [        ['OS=="win"', {
           'defines': [
             'WIN32_LEAN_AND_MEAN'
           ],
           'link_settings': {
             'libraries': [
-              'oleacc.lib'
+              'oleacc.lib',
+              'ole32.lib',
+              'oleaut32.lib'
             ]
           },
       	  'sources': [

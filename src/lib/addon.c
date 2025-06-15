@@ -222,6 +222,98 @@ napi_value AddonScreenshot(napi_env env, napi_callback_info info) {
   return img_buffer;
 }
 
+napi_value AddonFindEditControls(napi_env env, napi_callback_info info) {
+  napi_status status;
+  
+  ow_edit_controls_result result = ow_find_edit_controls();
+  
+  napi_value result_obj;
+  status = napi_create_object(env, &result_obj);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  napi_value found_val;
+  status = napi_get_boolean(env, result.found, &found_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  status = napi_set_named_property(env, result_obj, "found", found_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  napi_value count_val;
+  status = napi_create_int32(env, result.count, &count_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  status = napi_set_named_property(env, result_obj, "count", count_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  return result_obj;
+}
+
+napi_value AddonInputTextToEdit(napi_env env, napi_callback_info info) {
+  napi_status status;
+  
+  size_t argc = 2;
+  napi_value args[2];
+  status = napi_get_cb_info(env, info, &argc, args, NULL, NULL);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  if (argc < 2) {
+    napi_throw_error(env, NULL, "Expected 2 arguments: editIndex and text");
+    return NULL;
+  }
+  
+  // Get edit index
+  int32_t edit_index;
+  status = napi_get_value_int32(env, args[0], &edit_index);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  // Get text
+  size_t text_length;
+  status = napi_get_value_string_utf8(env, args[1], NULL, 0, &text_length);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  char* text = malloc(text_length + 1);
+  status = napi_get_value_string_utf8(env, args[1], text, text_length + 1, NULL);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  int result = ow_input_text_to_edit(edit_index, text);
+  free(text);
+  
+  napi_value return_val;
+  status = napi_get_boolean(env, result, &return_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  return return_val;
+}
+
+napi_value AddonGetTextFromEdit(napi_env env, napi_callback_info info) {
+  napi_status status;
+  
+  size_t argc = 1;
+  napi_value args[1];
+  status = napi_get_cb_info(env, info, &argc, args, NULL, NULL);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  if (argc < 1) {
+    napi_throw_error(env, NULL, "Expected 1 argument: editIndex");
+    return NULL;
+  }
+  
+  // Get edit index
+  int32_t edit_index;
+  status = napi_get_value_int32(env, args[0], &edit_index);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  char buffer[1024]; // 1KB buffer for text
+  int result = ow_get_text_from_edit(edit_index, buffer, sizeof(buffer));
+  
+  if (result) {
+    napi_value return_val;
+    status = napi_create_string_utf8(env, buffer, NAPI_AUTO_LENGTH, &return_val);
+    NAPI_THROW_IF_FAILED(env, status, NULL);
+    return return_val;
+  } else {
+    return NULL; // Return null on failure
+  }
+}
+
 void AddonCleanUp(void* arg) {
   // @TODO
   // UnhookWinEvent(win_event_hhook);
@@ -245,10 +337,24 @@ NAPI_MODULE_INIT() {
   NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
   status = napi_set_named_property(env, exports, "focusTarget", export_fn);
   NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
-
   status = napi_create_function(env, NULL, 0, AddonScreenshot, NULL, &export_fn);
   NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
   status = napi_set_named_property(env, exports, "screenshot", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, AddonFindEditControls, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "findEditControls", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, AddonInputTextToEdit, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "inputTextToEdit", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, AddonGetTextFromEdit, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "getTextFromEdit", export_fn);
   NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
 
   status = napi_add_env_cleanup_hook(env, AddonCleanUp, NULL);

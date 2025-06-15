@@ -72,6 +72,21 @@ void ow_emit_event(struct ow_event* event);
 
 void ow_screenshot(uint8_t* out, uint32_t width, uint32_t height);
 
+// UI Automation functions for finding and interacting with Edit controls
+typedef struct {
+  int found;
+  int count;
+} ow_edit_controls_result;
+
+// Find Edit controls (ControlType 50004) in the target window
+ow_edit_controls_result ow_find_edit_controls();
+
+// Input text into a specific Edit control by index (0-based)
+int ow_input_text_to_edit(int edit_index, const char* text);
+
+// Get text from a specific Edit control by index (0-based)
+int ow_get_text_from_edit(int edit_index, char* buffer, int buffer_size);
+
 #ifdef __cplusplus
 }
 #endif
