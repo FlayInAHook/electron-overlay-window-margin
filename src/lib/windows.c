@@ -46,6 +46,10 @@ static struct ow_overlay_window overlay_info = {
 static IUIAutomation* g_pAutomation = NULL;
 static IUIAutomationElement* g_pEditElements[2] = {NULL, NULL}; // Support for 2 edit controls
 static int g_editElementsCount = 0;
+static IUIAutomationElement* g_pButtonElements[10] = {NULL}; // Support for up to 10 button controls
+static int g_buttonElementsCount = 0;
+static IUIAutomationElement* g_pButtonWithImageElements[10] = {NULL}; // Support for up to 10 button controls with images
+static int g_buttonWithImageElementsCount = 0;
 
 static VOID CALLBACK hook_proc(HWINEVENTHOOK, DWORD, HWND, LONG, LONG, DWORD, DWORD);
 
@@ -413,6 +417,19 @@ static void cleanup_ui_automation() {
   }
   g_editElementsCount = 0;
 
+  for (int i = 0; i < 10; i++) {
+    if (g_pButtonElements[i] != NULL) {
+      g_pButtonElements[i]->lpVtbl->Release(g_pButtonElements[i]);
+      g_pButtonElements[i] = NULL;
+    }
+    if (g_pButtonWithImageElements[i] != NULL) {
+      g_pButtonWithImageElements[i]->lpVtbl->Release(g_pButtonWithImageElements[i]);
+      g_pButtonWithImageElements[i] = NULL;
+    }
+  }
+  g_buttonElementsCount = 0;
+  g_buttonWithImageElementsCount = 0;
+
   if (g_pAutomation != NULL) {
     g_pAutomation->lpVtbl->Release(g_pAutomation);
     g_pAutomation = NULL;
@@ -571,4 +588,245 @@ int ow_get_text_from_edit(int edit_index, char* buffer, int buffer_size) {
   
   pValuePattern->lpVtbl->Release(pValuePattern);
   return 0; // Failed
+}
+
+ow_button_controls_result ow_find_button_controls() {
+  ow_button_controls_result result = {0, 0};
+  
+  if (target_info.hwnd == NULL) {
+    return result;
+  }
+
+  HRESULT hr = init_ui_automation();
+  if (FAILED(hr)) {
+    return result;
+  }
+
+  // Clean up previous button results
+  for (int i = 0; i < 10; i++) {
+    if (g_pButtonElements[i] != NULL) {
+      g_pButtonElements[i]->lpVtbl->Release(g_pButtonElements[i]);
+      g_pButtonElements[i] = NULL;
+    }
+  }
+  g_buttonElementsCount = 0;
+
+  // Get the window element
+  IUIAutomationElement* pWindowElement = NULL;
+  hr = g_pAutomation->lpVtbl->ElementFromHandle(g_pAutomation, target_info.hwnd, &pWindowElement);
+  if (FAILED(hr) || pWindowElement == NULL) {
+    return result;
+  }
+
+  // Create condition for Button controls (ControlType 50000)
+  IUIAutomationCondition* pCondition = NULL;
+  VARIANT varControlType;
+  VariantInit(&varControlType);
+  varControlType.vt = VT_I4;
+  varControlType.lVal = 50000; // UIA_ButtonControlTypeId
+  
+  hr = g_pAutomation->lpVtbl->CreatePropertyCondition(g_pAutomation, 
+                                                      UIA_ControlTypePropertyId, 
+                                                      varControlType, 
+                                                      &pCondition);
+  VariantClear(&varControlType);
+
+  if (SUCCEEDED(hr) && pCondition != NULL) {
+    // Find all Button controls
+    IUIAutomationElementArray* pFoundElements = NULL;
+    hr = pWindowElement->lpVtbl->FindAll(pWindowElement, TreeScope_Descendants, 
+                                         pCondition, &pFoundElements);
+    
+    if (SUCCEEDED(hr) && pFoundElements != NULL) {
+      int length = 0;
+      hr = pFoundElements->lpVtbl->get_Length(pFoundElements, &length);
+      
+      if (SUCCEEDED(hr)) {
+        result.found = 1;
+        result.count = length;
+        
+        // Store up to 10 button elements
+        g_buttonElementsCount = (length > 10) ? 10 : length;
+        
+        for (int i = 0; i < g_buttonElementsCount; i++) {
+          hr = pFoundElements->lpVtbl->GetElement(pFoundElements, i, &g_pButtonElements[i]);
+          if (FAILED(hr)) {
+            g_pButtonElements[i] = NULL;
+          }
+        }
+      }
+      
+      pFoundElements->lpVtbl->Release(pFoundElements);
+    }
+    
+    pCondition->lpVtbl->Release(pCondition);
+  }
+  
+  pWindowElement->lpVtbl->Release(pWindowElement);
+  return result;
+}
+
+int ow_click_button(int button_index) {
+  if (button_index < 0 || button_index >= g_buttonElementsCount || 
+      g_pButtonElements[button_index] == NULL) {
+    return 0; // Failed
+  }
+
+  // Get the Invoke pattern to click the button
+  IUIAutomationInvokePattern* pInvokePattern = NULL;
+  HRESULT hr = g_pButtonElements[button_index]->lpVtbl->GetCurrentPatternAs(
+    g_pButtonElements[button_index], UIA_InvokePatternId, &IID_IUIAutomationInvokePattern, 
+    (void**)&pInvokePattern);
+
+  if (FAILED(hr) || pInvokePattern == NULL) {
+    return 0; // Failed
+  }
+
+  // Invoke (click) the button
+  hr = pInvokePattern->lpVtbl->Invoke(pInvokePattern);
+  
+  pInvokePattern->lpVtbl->Release(pInvokePattern);
+  
+  return SUCCEEDED(hr) ? 1 : 0;
+}
+
+ow_button_controls_result ow_find_buttons_with_images() {
+  ow_button_controls_result result = {0, 0};
+  
+  if (target_info.hwnd == NULL) {
+    return result;
+  }
+
+  HRESULT hr = init_ui_automation();
+  if (FAILED(hr)) {
+    return result;
+  }
+
+  // Clean up previous button with image results
+  for (int i = 0; i < 10; i++) {
+    if (g_pButtonWithImageElements[i] != NULL) {
+      g_pButtonWithImageElements[i]->lpVtbl->Release(g_pButtonWithImageElements[i]);
+      g_pButtonWithImageElements[i] = NULL;
+    }
+  }
+  g_buttonWithImageElementsCount = 0;
+
+  // Get the window element
+  IUIAutomationElement* pWindowElement = NULL;
+  hr = g_pAutomation->lpVtbl->ElementFromHandle(g_pAutomation, target_info.hwnd, &pWindowElement);
+  if (FAILED(hr) || pWindowElement == NULL) {
+    return result;
+  }
+
+  // Create condition for Button controls (ControlType 50000)
+  IUIAutomationCondition* pButtonCondition = NULL;
+  VARIANT varButtonControlType;
+  VariantInit(&varButtonControlType);
+  varButtonControlType.vt = VT_I4;
+  varButtonControlType.lVal = 50000; // UIA_ButtonControlTypeId
+  
+  hr = g_pAutomation->lpVtbl->CreatePropertyCondition(g_pAutomation, 
+                                                      UIA_ControlTypePropertyId, 
+                                                      varButtonControlType, 
+                                                      &pButtonCondition);
+  VariantClear(&varButtonControlType);
+
+  if (SUCCEEDED(hr) && pButtonCondition != NULL) {
+    // Find all Button controls
+    IUIAutomationElementArray* pButtonElements = NULL;
+    hr = pWindowElement->lpVtbl->FindAll(pWindowElement, TreeScope_Descendants, 
+                                         pButtonCondition, &pButtonElements);
+    
+    if (SUCCEEDED(hr) && pButtonElements != NULL) {
+      int buttonCount = 0;
+      hr = pButtonElements->lpVtbl->get_Length(pButtonElements, &buttonCount);
+      
+      if (SUCCEEDED(hr)) {
+        // Create condition for Image controls (ControlType 50006)
+        IUIAutomationCondition* pImageCondition = NULL;
+        VARIANT varImageControlType;
+        VariantInit(&varImageControlType);
+        varImageControlType.vt = VT_I4;
+        varImageControlType.lVal = 50006; // UIA_ImageControlTypeId
+        
+        hr = g_pAutomation->lpVtbl->CreatePropertyCondition(g_pAutomation, 
+                                                            UIA_ControlTypePropertyId, 
+                                                            varImageControlType, 
+                                                            &pImageCondition);
+        VariantClear(&varImageControlType);
+
+        if (SUCCEEDED(hr) && pImageCondition != NULL) {
+          // Check each button for image children
+          for (int i = 0; i < buttonCount && g_buttonWithImageElementsCount < 10; i++) {
+            IUIAutomationElement* pButtonElement = NULL;
+            hr = pButtonElements->lpVtbl->GetElement(pButtonElements, i, &pButtonElement);
+            
+            if (SUCCEEDED(hr) && pButtonElement != NULL) {
+              // Look for image children in this button
+              IUIAutomationElementArray* pImageElements = NULL;
+              hr = pButtonElement->lpVtbl->FindAll(pButtonElement, TreeScope_Children, 
+                                                   pImageCondition, &pImageElements);
+              
+              if (SUCCEEDED(hr) && pImageElements != NULL) {
+                int imageCount = 0;
+                hr = pImageElements->lpVtbl->get_Length(pImageElements, &imageCount);
+                
+                if (SUCCEEDED(hr) && imageCount > 0) {
+                  // This button has image children, store it
+                  g_pButtonWithImageElements[g_buttonWithImageElementsCount] = pButtonElement;
+                  g_buttonWithImageElementsCount++;
+                  pButtonElement = NULL; // Don't release, we're keeping it
+                }
+                
+                pImageElements->lpVtbl->Release(pImageElements);
+              }
+              
+              if (pButtonElement != NULL) {
+                pButtonElement->lpVtbl->Release(pButtonElement);
+              }
+            }
+          }
+          
+          pImageCondition->lpVtbl->Release(pImageCondition);
+        }
+        
+        result.found = (g_buttonWithImageElementsCount > 0) ? 1 : 0;
+        result.count = g_buttonWithImageElementsCount;
+      }
+      
+      pButtonElements->lpVtbl->Release(pButtonElements);
+    }
+    
+    pButtonCondition->lpVtbl->Release(pButtonCondition);
+  }
+  
+  pWindowElement->lpVtbl->Release(pWindowElement);
+  return result;
+}
+
+int ow_click_first_button_with_image() {
+  if (g_buttonWithImageElementsCount == 0 || g_pButtonWithImageElements[0] == NULL) {
+    // Try to find buttons with images first
+    ow_button_controls_result result = ow_find_buttons_with_images();
+    if (!result.found || result.count == 0) {
+      return 0; // Failed
+    }
+  }
+
+  // Get the Invoke pattern to click the first button with image
+  IUIAutomationInvokePattern* pInvokePattern = NULL;
+  HRESULT hr = g_pButtonWithImageElements[0]->lpVtbl->GetCurrentPatternAs(
+    g_pButtonWithImageElements[0], UIA_InvokePatternId, &IID_IUIAutomationInvokePattern, 
+    (void**)&pInvokePattern);
+
+  if (FAILED(hr) || pInvokePattern == NULL) {
+    return 0; // Failed
+  }
+
+  // Invoke (click) the button
+  hr = pInvokePattern->lpVtbl->Invoke(pInvokePattern);
+  
+  pInvokePattern->lpVtbl->Release(pInvokePattern);
+  
+  return SUCCEEDED(hr) ? 1 : 0;
 }

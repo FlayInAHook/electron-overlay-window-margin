@@ -319,6 +319,93 @@ void AddonCleanUp(void* arg) {
   // UnhookWinEvent(win_event_hhook);
 }
 
+napi_value AddonFindButtonControls(napi_env env, napi_callback_info info) {
+  napi_status status;
+  
+  ow_button_controls_result result = ow_find_button_controls();
+  
+  napi_value result_obj;
+  status = napi_create_object(env, &result_obj);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  napi_value found_val;
+  status = napi_get_boolean(env, result.found, &found_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  status = napi_set_named_property(env, result_obj, "found", found_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  napi_value count_val;
+  status = napi_create_int32(env, result.count, &count_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  status = napi_set_named_property(env, result_obj, "count", count_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  return result_obj;
+}
+
+napi_value AddonClickButton(napi_env env, napi_callback_info info) {
+  napi_status status;
+  
+  size_t argc = 1;
+  napi_value args[1];
+  status = napi_get_cb_info(env, info, &argc, args, NULL, NULL);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  if (argc < 1) {
+    napi_throw_error(env, NULL, "Expected 1 argument: buttonIndex");
+    return NULL;
+  }
+  
+  // Get button index
+  int32_t button_index;
+  status = napi_get_value_int32(env, args[0], &button_index);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  int result = ow_click_button(button_index);
+  
+  napi_value return_val;
+  status = napi_get_boolean(env, result, &return_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  return return_val;
+}
+
+napi_value AddonFindButtonsWithImages(napi_env env, napi_callback_info info) {
+  napi_status status;
+  
+  ow_button_controls_result result = ow_find_buttons_with_images();
+  
+  napi_value result_obj;
+  status = napi_create_object(env, &result_obj);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  napi_value found_val;
+  status = napi_get_boolean(env, result.found, &found_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  status = napi_set_named_property(env, result_obj, "found", found_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  napi_value count_val;
+  status = napi_create_int32(env, result.count, &count_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  status = napi_set_named_property(env, result_obj, "count", count_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  return result_obj;
+}
+
+napi_value AddonClickFirstButtonWithImage(napi_env env, napi_callback_info info) {
+  napi_status status;
+  
+  int result = ow_click_first_button_with_image();
+  
+  napi_value return_val;
+  status = napi_get_boolean(env, result, &return_val);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+  
+  return return_val;
+}
+
 NAPI_MODULE_INIT() {
   napi_status status;
   napi_value export_fn;
@@ -355,6 +442,26 @@ NAPI_MODULE_INIT() {
   status = napi_create_function(env, NULL, 0, AddonGetTextFromEdit, NULL, &export_fn);
   NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
   status = napi_set_named_property(env, exports, "getTextFromEdit", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, AddonFindButtonControls, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "findButtonControls", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, AddonClickButton, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "clickButton", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, AddonFindButtonsWithImages, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "findButtonsWithImages", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, AddonClickFirstButtonWithImage, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "clickFirstButtonWithImage", export_fn);
   NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
 
   status = napi_add_env_cleanup_hook(env, AddonCleanUp, NULL);

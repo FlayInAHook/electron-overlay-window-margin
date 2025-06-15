@@ -352,3 +352,22 @@ int ow_input_text_to_edit(int edit_index, const char* text) {
 int ow_get_text_from_edit(int edit_index, char* buffer, int buffer_size) {
   return 0; // Not supported on Linux
 }
+
+// Stub implementations for Button Automation functions (only supported on Windows)
+ow_button_controls_result ow_find_button_controls() {
+  ow_button_controls_result result = {0, 0};
+  return result;
+}
+
+int ow_click_button(int button_index) {
+  return 0; // Not supported on Linux
+}
+
+ow_button_controls_result ow_find_buttons_with_images() {
+  ow_button_controls_result result = {0, 0};
+  return result;
+}
+
+int ow_click_first_button_with_image() {
+  return 0; // Not supported on Linux
+}

@@ -78,6 +78,12 @@ typedef struct {
   int count;
 } ow_edit_controls_result;
 
+// UI Automation functions for finding and interacting with Button controls
+typedef struct {
+  int found;
+  int count;
+} ow_button_controls_result;
+
 // Find Edit controls (ControlType 50004) in the target window
 ow_edit_controls_result ow_find_edit_controls();
 
@@ -86,6 +92,18 @@ int ow_input_text_to_edit(int edit_index, const char* text);
 
 // Get text from a specific Edit control by index (0-based)
 int ow_get_text_from_edit(int edit_index, char* buffer, int buffer_size);
+
+// Find Button controls (ControlType 50000) in the target window
+ow_button_controls_result ow_find_button_controls();
+
+// Click a specific Button control by index (0-based)
+int ow_click_button(int button_index);
+
+// Find Button controls that have Image children (ControlType 50006) in the target window
+ow_button_controls_result ow_find_buttons_with_images();
+
+// Click the first Button control that has an Image child
+int ow_click_first_button_with_image();
 
 #ifdef __cplusplus
 }

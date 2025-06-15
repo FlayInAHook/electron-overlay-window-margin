@@ -10,6 +10,7 @@ const toggleMouseKey = 'CmdOrCtrl + J'
 const toggleShowKey = 'CmdOrCtrl + K'
 const findEditKey = 'CmdOrCtrl + L'
 const inputTextKey = 'CmdOrCtrl + M'
+const clickButtonWithImageKey = 'CmdOrCtrl + N'
 
 function createWindow () {
   window = new BrowserWindow({
@@ -35,6 +36,7 @@ function createWindow () {
           <br><span><b>${toggleShowKey}</b> to "hide" overlay using CSS</span>
           <br><span><b>${findEditKey}</b> to find Edit controls (Windows only)</span>
           <br><span><b>${inputTextKey}</b> to input text to first Edit control (Windows only)</span>
+          <br><span><b>${clickButtonWithImageKey}</b> to click button with image (Windows only)</span>
         </div>
       </div>
       <script>
@@ -128,6 +130,25 @@ function makeDemoInteractive () {
         }
       } catch (error) {
         console.error('Error inputting text to Edit control:', error)
+      }
+    } else {
+      console.log('UI Automation is only supported on Windows')
+    }
+  })
+  globalShortcut.register(clickButtonWithImageKey, () => {
+    if (process.platform === 'win32') {
+      try {
+        const buttons = OverlayController.findButtonControls()
+        const imageButtons = OverlayController.findButtonsWithImages()
+        console.log('Buttons with images found:', buttons, imageButtons)
+        const success = OverlayController.clickButton(buttons.count - 2);
+        if (success) {
+          console.log('Successfully clicked the first button with image')
+        } else {
+          console.log('Failed to click button with image - no buttons with images found')
+        }
+      } catch (error) {
+        console.error('Error clicking button with image:', error)
       }
     } else {
       console.log('UI Automation is only supported on Windows')

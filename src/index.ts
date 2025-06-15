@@ -17,9 +17,18 @@ interface AddonExports {
   findEditControls(): EditControlsResult
   inputTextToEdit(editIndex: number, text: string): boolean
   getTextFromEdit(editIndex: number): string | null
+  findButtonControls(): ButtonControlsResult
+  clickButton(buttonIndex: number): boolean
+  findButtonsWithImages(): ButtonControlsResult
+  clickFirstButtonWithImage(): boolean
 }
 
 export interface EditControlsResult {
+  found: boolean
+  count: number
+}
+
+export interface ButtonControlsResult {
   found: boolean
   count: number
 }
@@ -334,7 +343,6 @@ class OverlayControllerGlobal {
     }
     return lib.findEditControls()
   }
-
   // Input text into a specific Edit control by index (0-based)
   inputTextToEdit (editIndex: number, text: string): boolean {
     if (process.platform !== 'win32') {
@@ -342,13 +350,42 @@ class OverlayControllerGlobal {
     }
     return lib.inputTextToEdit(editIndex, text)
   }
-
   // Get text from a specific Edit control by index (0-based)
   getTextFromEdit (editIndex: number): string | null {
     if (process.platform !== 'win32') {
       throw new Error('UI Automation is only supported on Windows.')
     }
     return lib.getTextFromEdit(editIndex)
+  }
+  findButtonControls (): ButtonControlsResult {
+    if (process.platform !== 'win32') {
+      throw new Error('UI Automation is only supported on Windows.')
+    }
+    return lib.findButtonControls()
+  }
+
+  // Click a specific Button control by index (0-based)
+  clickButton (buttonIndex: number): boolean {
+    if (process.platform !== 'win32') {
+      throw new Error('UI Automation is only supported on Windows.')
+    }
+    return lib.clickButton(buttonIndex)
+  }
+
+  // Find Button controls that have Image children (ControlType 50006) in the target window
+  findButtonsWithImages (): ButtonControlsResult {
+    if (process.platform !== 'win32') {
+      throw new Error('UI Automation is only supported on Windows.')
+    }
+    return lib.findButtonsWithImages()
+  }
+
+  // Click the first Button control that has an Image child
+  clickFirstButtonWithImage (): boolean {
+    if (process.platform !== 'win32') {
+      throw new Error('UI Automation is only supported on Windows.')
+    }
+    return lib.clickFirstButtonWithImage()
   }
 }
 
