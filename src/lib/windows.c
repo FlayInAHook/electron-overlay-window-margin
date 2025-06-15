@@ -239,10 +239,6 @@ void handle_new_foreground(HWND hwnd) {
   check_and_handle_window(foreground_window, &target_info);
 }
 
-static void convertToCharArray(char* charPtr, char charArr[]) {
-  strcpy(charArr, charPtr);
-}
-
 static VOID CALLBACK hook_proc(
   HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild,
   DWORD idEventThread, DWORD dwmsEventTime
@@ -297,44 +293,7 @@ static VOID CALLBACK hook_proc(
     handle_new_foreground(hwnd);
     return;
   }
-
-  if (event == EVENT_OBJECT_FOCUS) {
-    if (hwnd == target_info.hwnd){
-
-      //size_t len = strlen(target_info.title);
-      char arr[100];
-      convertToCharArray(target_info.title, arr);
-      struct ow_event e = { .type = 12, .title=arr};
-      ow_emit_event(&e);
-      /*char* title = get_title(hwnd, &title);
-      if (!title || title == NULL) {
-        return;
-      }*
-      bool is_equal = (strcmp(title, target_info.title) == 0);
-      /*if (is_equal){
-        struct ow_event e = { .type = 22 };
-        ow_emit_event(&e);
-      }*/
-    } else {
-      /*char* title = get_title(hwnd, &title);
-      if (!title || title == NULL) {
-        return;
-      }
-      bool is_equal = (strcmp(title, target_info.title) == 0);
-      
-      if (is_equal) {
-        struct ow_event e = { .type = 33 };
-        ow_emit_event(&e);
-      }*/
-      
-    }
-    
-    return;
-  }
 }
-
-
-
 
 static VOID CALLBACK foreground_timer_proc(HWND _hwnd, UINT msg, UINT_PTR timerId, DWORD dwmsEventTime)
 {
@@ -356,12 +315,6 @@ static void hook_thread(void* _arg) {
   SetWinEventHook(
     EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZEEND,
     NULL, hook_proc, 0, 0, WINEVENT_OUTOFCONTEXT);
-
-  //Tim kann kein c lol  
-  SetWinEventHook(
-    EVENT_OBJECT_FOCUS, EVENT_OBJECT_FOCUS,
-    NULL, hook_proc, 0, 0, WINEVENT_OUTOFCONTEXT);
-
   // FIXES: ForegroundLockTimeout (even when = 0); Also edge cases when apps stealing FG window.
   // NOTE:  Using timer because WH_SHELL & WH_CBT hooks require dll injection
   SetTimer(NULL, 0, OW_FOREGROUND_TIMER_MS, foreground_timer_proc);
