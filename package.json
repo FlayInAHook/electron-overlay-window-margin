@@ -42,7 +42,8 @@
   },
   "dependencies": {
     "node-gyp-build": "4.x.x",
-    "throttle-debounce": "5.x.x"
+    "throttle-debounce": "5.x.x",
+    "typescript": "5.x.x"
   },
   "gypfile": true,
   "engines": {
