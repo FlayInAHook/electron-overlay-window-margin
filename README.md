@@ -25,3 +25,60 @@ Supported backends:
 Recommended dev utils
 - Windows: AccEvent (accevent.exe) and Inspect Object (inspect.exe) from Windows SDK
 - X11: xwininfo, xprop, xev
+
+## Installation and Usage
+
+### Installation
+
+```bash
+npm install electron-overlay-window
+```
+
+### Import Options
+
+The package supports both CommonJS and ES6 imports with full TypeScript support:
+
+```javascript
+// CommonJS
+const { OverlayController } = require('electron-overlay-window');
+
+// ES6 imports
+import { OverlayController, ButtonControlsResult, EditControlsResult } from 'electron-overlay-window';
+```
+
+### UI Automation Features (Windows Only)
+
+The library includes UI automation capabilities for interacting with controls in the target window:
+
+#### Edit Controls
+- `findEditControls()` - Find all Edit controls (text input fields)
+- `inputTextToEdit(index, text)` - Input text into a specific Edit control
+- `getTextFromEdit(index)` - Get text from a specific Edit control
+
+#### Button Controls
+- `findButtonControls()` - Find all Button controls
+- `clickButton(index)` - Click a specific Button control
+- `findButtonsWithImages()` - Find Button controls that contain Image children
+- `clickFirstButtonWithImage()` - Click the first Button that contains an Image
+
+### Example Usage
+
+```javascript
+import { OverlayController } from 'electron-overlay-window';
+
+// Find and interact with Edit controls
+const editResult = OverlayController.findEditControls();
+if (editResult.found) {
+  OverlayController.inputTextToEdit(0, 'Username');
+  OverlayController.inputTextToEdit(1, 'Password');
+}
+
+// Find and click buttons
+const buttonResult = OverlayController.findButtonControls();
+if (buttonResult.found) {
+  OverlayController.clickButton(0); // Click first button
+}
+
+// Click button with image
+OverlayController.clickFirstButtonWithImage();
+```
