@@ -22,7 +22,7 @@
   "scripts": {
     "install": "node-gyp-build",
     "prebuild": "prebuildify --napi",
-    "build": "node-gyp rebuild && yarn tsc",
+    "build": "node-gyp rebuild && bun tsc",
     "demo:electron": "node-gyp rebuild && yarn tsc && electron dist/demo/electron-demo.js"
   },
   "files": [
