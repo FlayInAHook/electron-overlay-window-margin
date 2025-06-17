@@ -34,7 +34,7 @@
     }
   },
   "scripts": {
-    "install": "node-gyp-build",
+    "install": "node-gyp rebuild && npm run build:types && npm run build:cjs && npm run build:esm",
     "prebuild": "prebuildify --napi",
     "build": "node-gyp rebuild && npm run build:types && npm run build:cjs && npm run build:esm",
     "build:types": "tsc --emitDeclarationOnly",
