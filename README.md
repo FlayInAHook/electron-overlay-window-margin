@@ -81,4 +81,34 @@ if (buttonResult.found) {
 
 // Click button with image
 OverlayController.clickFirstButtonWithImage();
+
+// Pause/Resume attachment
+OverlayController.pause(); // Window can now be used independently
+console.log(OverlayController.paused); // true
+
+OverlayController.resume(); // Window will follow target again
+
+// Listen for pause/resume events
+OverlayController.events.on('pause', (event) => {
+  console.log('Attachment paused:', event.isPaused);
+});
+
+OverlayController.events.on('resume', (event) => {
+  console.log('Attachment resumed:', event.isPaused);
+});
 ```
+
+### Pause/Resume Functionality
+
+The library now supports pausing and resuming the overlay attachment:
+
+- **`pause()`** - Pauses the attachment, allowing the overlay window to be used independently. The window will stop following the target window's position, size, and focus changes.
+- **`resume()`** - Resumes the attachment, restoring normal overlay behavior where the window follows the target.
+- **`paused`** - Property to check if the attachment is currently paused.
+- **Events** - Listen for 'pause' and 'resume' events to respond to state changes.
+
+When paused, the overlay window:
+- Becomes clickable and interactive
+- No longer follows the target window's position or size
+- Can be moved and resized independently
+- Is no longer always on top

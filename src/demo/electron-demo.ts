@@ -11,6 +11,7 @@ const toggleShowKey = 'CmdOrCtrl + K'
 const findEditKey = 'CmdOrCtrl + L'
 const inputTextKey = 'CmdOrCtrl + M'
 const clickButtonWithImageKey = 'CmdOrCtrl + N'
+const pauseResumeKey = 'CmdOrCtrl + P'
 
 function createWindow () {
   window = new BrowserWindow({
@@ -32,8 +33,11 @@ function createWindow () {
       <div style="padding-top: 50vh; text-align: center;">
         <div style="padding: 16px; border-radius: 8px; background: rgb(255,255,255); border: 4px solid red; display: inline-block;">
           <span>Overlay Window</span>
-          <span id="text1"></span>          <br><span><b>${toggleMouseKey}</b> to toggle setIgnoreMouseEvents</span>
+          <span id="text1"></span>
+          <span id="pauseStatus"></span>
+          <br><span><b>${toggleMouseKey}</b> to toggle setIgnoreMouseEvents</span>
           <br><span><b>${toggleShowKey}</b> to "hide" overlay using CSS</span>
+          <br><span><b>${pauseResumeKey}</b> to pause/resume attachment</span>
           <br><span><b>${findEditKey}</b> to find Edit controls (Windows only)</span>
           <br><span><b>${inputTextKey}</b> to input text to first Edit control (Windows only)</span>
           <br><span><b>${clickButtonWithImageKey}</b> to click button with image (Windows only)</span>
@@ -53,6 +57,12 @@ function createWindow () {
             document.body.style.display = 'none'
           }
         });
+
+        electron.ipcRenderer.on('pause-status-change', (e, isPaused) => {
+          document.getElementById('pauseStatus').textContent = isPaused ? ' (PAUSED - Independent Mode)' : '';
+          document.getElementById('pauseStatus').style.color = isPaused ? 'orange' : '';
+          document.getElementById('pauseStatus').style.fontWeight = isPaused ? 'bold' : '';
+        });
       </script>
     </body>
   `)
@@ -67,6 +77,17 @@ function createWindow () {
     process.platform === 'darwin' ? 'Untitled' : 'Riot Client',
     { hasTitleBarOnMac: true }
   )
+
+  // Listen for pause/resume events
+  OverlayController.events.on('pause', () => {
+    console.log('Overlay attachment paused - window can now be used independently')
+    window.webContents.send('pause-status-change', true)
+  })
+
+  OverlayController.events.on('resume', () => {
+    console.log('Overlay attachment resumed - window will follow target again')
+    window.webContents.send('pause-status-change', false)
+  })
 }
 
 function makeDemoInteractive () {
@@ -93,6 +114,18 @@ function makeDemoInteractive () {
   globalShortcut.register(toggleShowKey, () => {
     window.webContents.send('visibility-change', false)
   })
+  
+  // Add pause/resume functionality
+  globalShortcut.register(pauseResumeKey, () => {
+    if (OverlayController.paused) {
+      console.log('Resuming overlay attachment...')
+      OverlayController.resume()
+    } else {
+      console.log('Pausing overlay attachment...')
+      OverlayController.pause()
+    }
+  })
+  
   // Demo UI Automation functionality (Windows only)
   globalShortcut.register(findEditKey, () => {
     if (process.platform === 'win32') {

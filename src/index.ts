@@ -62,6 +62,10 @@ export interface MoveresizeEvent {
   height: number
 }
 
+export interface PauseEvent {
+  isPaused: boolean
+}
+
 export interface AttachOptions {
   // Whether the Window has a title bar. We adjust the overlay to not cover it
   hasTitleBarOnMac?: boolean
@@ -98,6 +102,7 @@ class OverlayControllerGlobal {
   // NOTE: stores screen physical rect on Windows
   targetBounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 }
   targetHasFocus = false
+  private isPaused = false
   private focusNext: 'overlay' | 'target' | undefined
   // The height of a title bar on a standard window. Only measured on Mac
   private macTitleBarHeight = 0
@@ -108,39 +113,47 @@ class OverlayControllerGlobal {
   constructor () {
     this.events.on('attach', (e: AttachEvent) => {
       this.targetHasFocus = true
-      if (this.electronWindow) {
+      if (this.electronWindow && !this.isPaused) {
         if (!this.attachOptions.selfHandleClickable) this.electronWindow.setIgnoreMouseEvents(true)
         
         this.electronWindow.showInactive()
         this.electronWindow.setAlwaysOnTop(true, 'screen-saver')
       }
-      if (e.isFullscreen !== undefined) {
+      if (e.isFullscreen !== undefined && !this.isPaused) {
         this.handleFullscreen(e.isFullscreen)
       }
       this.targetBounds = e
-      this.updateOverlayBounds()
+      if (!this.isPaused) {
+        this.updateOverlayBounds()
+      }
     })
 
     this.events.on('fullscreen', (e: FullscreenEvent) => {
-      this.handleFullscreen(e.isFullscreen)
+      if (!this.isPaused) {
+        this.handleFullscreen(e.isFullscreen)
+      }
     })
 
     this.events.on('detach', () => {
       this.targetHasFocus = false
-      this.electronWindow?.hide()
+      if (!this.isPaused) {
+        this.electronWindow?.hide()
+      }
     })
 
     const dispatchMoveresize = throttle(34 /* 30fps */, this.updateOverlayBounds.bind(this))
 
     this.events.on('moveresize', (e: MoveresizeEvent) => {
       this.targetBounds = e
-      dispatchMoveresize()
+      if (!this.isPaused) {
+        dispatchMoveresize()
+      }
     })
 
     this.events.on('blur', () => {
       this.targetHasFocus = false
 
-      if (this.electronWindow && (isMac ||
+      if (this.electronWindow && !this.isPaused && (isMac ||
         this.focusNext !== 'overlay' && !this.electronWindow.isFocused()
       )) {
         this.electronWindow.hide()
@@ -151,11 +164,22 @@ class OverlayControllerGlobal {
       this.focusNext = undefined
       this.targetHasFocus = true
 
-      if (this.electronWindow) {
+      if (this.electronWindow && !this.isPaused) {
         if (!this.attachOptions.selfHandleClickable) this.electronWindow.setIgnoreMouseEvents(true)
         if (!this.electronWindow.isVisible()) {
           this.electronWindow.showInactive()
           this.electronWindow.setAlwaysOnTop(true, 'screen-saver')
+        }
+      }
+    })
+
+    this.events.on('pause', (e: PauseEvent) => {
+      this.isPaused = e.isPaused
+      if (this.electronWindow) {
+        if (e.isPaused) {
+          this.electronWindow.hide()
+        } else {
+          this.electronWindow.show()
         }
       }
     })
@@ -211,6 +235,8 @@ class OverlayControllerGlobal {
   } 
 
   private updateOverlayBounds () {
+    if (this.isPaused) return
+    
     let lastBounds = this.adjustBoundsForMacTitleBar(this.targetBounds)
     if (lastBounds.width === 0 || lastBounds.height === 0) return
     if (!this.electronWindow) return
@@ -289,17 +315,79 @@ class OverlayControllerGlobal {
     if (!this.electronWindow) {
       throw new Error('You are using the library in tracking mode')
     }
+    if (this.isPaused) {
+      throw new Error('Cannot activate overlay while paused. Resume attachment first.')
+    }
     this.focusNext = 'overlay'
     if (!this.attachOptions.selfHandleClickable) this.electronWindow.setIgnoreMouseEvents(false)
     this.electronWindow.focus()
   }
 
   focusTarget () {
+    if (this.isPaused) {
+      throw new Error('Cannot focus target while paused. Resume attachment first.')
+    }
     this.focusNext = 'target'
     if (!this.attachOptions.selfHandleClickable) this.electronWindow?.setIgnoreMouseEvents(true)
     lib.focusTarget()
   }
 
+  /**
+   * Pause the attachment, allowing the overlay window to be used independently
+   * When paused, the overlay window will not follow the target window's position, size, or focus changes
+   */
+  pause () {
+    if (!this.isInitialized) {
+      throw new Error('Cannot pause before attachment is initialized')
+    }
+    if (this.isPaused) {
+      return // Already paused
+    }
+    
+    this.isPaused = true
+    
+    // Allow the overlay window to be used independently
+    if (this.electronWindow) {
+      this.electronWindow.setIgnoreMouseEvents(false)
+      this.electronWindow.setAlwaysOnTop(false)
+    }
+    
+    // Emit pause event
+    this.events.emit('pause', { isPaused: true } as PauseEvent)
+  }
+
+  /**
+   * Resume the attachment, restoring overlay behavior
+   * The overlay window will resume following the target window's position, size, and focus changes
+   */
+  resume () {
+    if (!this.isInitialized) {
+      throw new Error('Cannot resume before attachment is initialized')
+    }
+    if (!this.isPaused) {
+      return // Already resumed
+    }
+    
+    this.isPaused = false
+    
+    // Restore overlay behavior if target has focus
+    if (this.electronWindow && this.targetHasFocus) {
+      if (!this.attachOptions.selfHandleClickable) this.electronWindow.setIgnoreMouseEvents(true)
+      this.electronWindow.showInactive()
+      this.electronWindow.setAlwaysOnTop(true, 'screen-saver')
+      this.updateOverlayBounds()
+    }
+    
+    // Emit resume event
+    this.events.emit('resume', { isPaused: false } as PauseEvent)
+  }
+
+  /**
+   * Check if the attachment is currently paused
+   */
+  get paused (): boolean {
+    return this.isPaused
+  }
   attachByTitle (electronWindow: BrowserWindow | undefined, targetWindowTitle: string, options: AttachOptions = {}) {
     if (this.isInitialized) {
       throw new Error('Library can be initialized only once.')
@@ -309,7 +397,7 @@ class OverlayControllerGlobal {
     this.electronWindow = electronWindow
 
     this.electronWindow?.on('blur', () => {
-      if (!this.targetHasFocus && this.focusNext !== 'target') {
+      if (!this.targetHasFocus && this.focusNext !== 'target' && !this.isPaused) {
         this.electronWindow!.hide()
       }
     })
