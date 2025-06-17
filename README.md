@@ -88,6 +88,9 @@ console.log(OverlayController.paused); // true
 
 OverlayController.resume(); // Window will follow target again
 
+// Reset overlay position
+OverlayController.resetPosition(); // Force sync with target window position
+
 // Listen for pause/resume events
 OverlayController.events.on('pause', (event) => {
   console.log('Attachment paused:', event.isPaused);
@@ -112,3 +115,14 @@ When paused, the overlay window:
 - No longer follows the target window's position or size
 - Can be moved and resized independently
 - Is no longer always on top
+
+### Reset Position
+
+The `resetPosition()` method allows you to manually trigger the same behavior that occurs when the target window moves:
+
+```javascript
+// Reset overlay position to match current target window position
+OverlayController.resetPosition();
+```
+
+This is useful when you need to manually synchronize the overlay position with the target window, especially after programmatic changes or when dealing with specific window management scenarios.

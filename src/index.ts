@@ -388,6 +388,22 @@ class OverlayControllerGlobal {
   get paused (): boolean {
     return this.isPaused
   }
+
+  /**
+   * Reset the overlay position to match the current target window position
+   * This triggers the same behavior as when the target window moves
+   */
+  resetPosition () {
+    if (!this.isInitialized) {
+      throw new Error('Cannot reset position before attachment is initialized')
+    }
+    if (!this.electronWindow) {
+      throw new Error('You are using the library in tracking mode')
+    }
+    
+    // Force update the overlay bounds using current target bounds
+    this.updateOverlayBounds()
+  }
   attachByTitle (electronWindow: BrowserWindow | undefined, targetWindowTitle: string, options: AttachOptions = {}) {
     if (this.isInitialized) {
       throw new Error('Library can be initialized only once.')

@@ -12,6 +12,7 @@ const findEditKey = 'CmdOrCtrl + L'
 const inputTextKey = 'CmdOrCtrl + M'
 const clickButtonWithImageKey = 'CmdOrCtrl + N'
 const pauseResumeKey = 'CmdOrCtrl + P'
+const resetPositionKey = 'CmdOrCtrl + R'
 
 function createWindow () {
   window = new BrowserWindow({
@@ -34,10 +35,10 @@ function createWindow () {
         <div style="padding: 16px; border-radius: 8px; background: rgb(255,255,255); border: 4px solid red; display: inline-block;">
           <span>Overlay Window</span>
           <span id="text1"></span>
-          <span id="pauseStatus"></span>
-          <br><span><b>${toggleMouseKey}</b> to toggle setIgnoreMouseEvents</span>
+          <span id="pauseStatus"></span>          <br><span><b>${toggleMouseKey}</b> to toggle setIgnoreMouseEvents</span>
           <br><span><b>${toggleShowKey}</b> to "hide" overlay using CSS</span>
           <br><span><b>${pauseResumeKey}</b> to pause/resume attachment</span>
+          <br><span><b>${resetPositionKey}</b> to reset overlay position</span>
           <br><span><b>${findEditKey}</b> to find Edit controls (Windows only)</span>
           <br><span><b>${inputTextKey}</b> to input text to first Edit control (Windows only)</span>
           <br><span><b>${clickButtonWithImageKey}</b> to click button with image (Windows only)</span>
@@ -183,9 +184,18 @@ function makeDemoInteractive () {
         }
       } catch (error) {
         console.error('Error clicking button with image:', error)
-      }
-    } else {
+      }    } else {
       console.log('UI Automation is only supported on Windows')
+    }
+  })
+  
+  globalShortcut.register(resetPositionKey, () => {
+    try {
+      console.log('Resetting overlay position to match target window...')
+      OverlayController.resetPosition()
+      console.log('Overlay position reset successfully')
+    } catch (error) {
+      console.error('Error resetting overlay position:', error)
     }
   })
 }
